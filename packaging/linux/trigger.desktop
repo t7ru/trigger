@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=trigger
+Exec=trigger
+Icon=trigger
+Terminal=false
+Categories=Utility;
+StartupWMClass=trigger
