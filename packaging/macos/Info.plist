@@ -12,6 +12,6 @@
 	<key>CFBundleVersion</key><string>0.1.0</string>
 	<key>CFBundleIconFile</key><string>trigger.icns</string>
 	<key>NSMicrophoneUsageDescription</key><string
-		>trigger records your voice for dictation and questions.</string>
+		>trigger for quick dictation and asks.</string>
 </dict>
 </plist>
