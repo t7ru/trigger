@@ -119,6 +119,8 @@ pub enum Event {
     DismissAnswer(u64),
     DismissError,
     SetTheme(Theme),
+    SetAutoPaste(bool),
+    SetScreenshot(bool),
     Done {
         label: String,
         target: isize,
@@ -140,6 +142,8 @@ struct Settings {
     mic: FieldEntity,
     theme: Rc<Cell<Theme>>,
     applied_theme: Rc<Cell<Theme>>,
+    auto_paste: Rc<Cell<bool>>,
+    screenshot: Rc<Cell<bool>>,
     model_request: u64,
     model_cache: HashMap<String, Vec<String>>,
     indicator: Option<gpui::WindowHandle<Indicator>>,
@@ -225,7 +229,7 @@ impl Settings {
             self.answer.clone(),
             self.mic.clone(),
         ];
-        let bounds = Bounds::centered(None, size(px(540.), px(420.)), cx);
+        let bounds = Bounds::centered(None, size(px(540.), px(480.)), cx);
         self.window = Some(
             cx.open_window(
                 window_options(bounds, size(px(480.), px(340.)), "trigger"),
@@ -273,6 +277,8 @@ impl Settings {
             || self.answer.read(cx).value().trim() != config.model
             || self.mic.read(cx).value().trim() != config.mic
             || self.theme.get() != config.theme
+            || self.auto_paste.get() != config.auto_paste
+            || self.screenshot.get() != config.screenshot
             || self.root.read(cx).shortcuts != config.shortcuts;
         self.status(cx, if changed { "Unsaved" } else { "Ready" }.into());
     }
@@ -769,12 +775,16 @@ fn main() {
                 cx,
             )
         });
+        let auto_paste = Rc::new(Cell::new(config.auto_paste));
+        let screenshot = Rc::new(Cell::new(config.screenshot));
         let root = cx.new(|cx| {
             Root::new(
                 tx.clone(),
                 config.shortcuts.clone(),
                 cx.focus_handle(),
                 theme.clone(),
+                auto_paste.clone(),
+                screenshot.clone(),
                 key.clone(),
                 voice.clone(),
                 answer.clone(),
@@ -793,6 +803,8 @@ fn main() {
             mic,
             theme,
             applied_theme,
+            auto_paste,
+            screenshot,
             model_request: 0,
             model_cache: HashMap::new(),
             indicator: None,
@@ -1055,6 +1067,14 @@ fn handle(
                 let _ = handle.update(cx, |_, _, cx| cx.notify());
             }
         }
+        Event::SetAutoPaste(on) => {
+            settings.auto_paste.set(on);
+            settings.refresh_status(cx, config);
+        }
+        Event::SetScreenshot(on) => {
+            settings.screenshot.set(on);
+            settings.refresh_status(cx, config);
+        }
         Event::SaveProvider => {
             if !settings.end_capture(cx) {
                 return;
@@ -1065,6 +1085,8 @@ fn handle(
             next.model = settings.answer.read(cx).value().trim().to_string();
             next.mic = settings.mic.read(cx).value().trim().to_string();
             next.theme = settings.theme.get();
+            next.auto_paste = settings.auto_paste.get();
+            next.screenshot = settings.screenshot.get();
             next.shortcuts = settings.root.read(cx).shortcuts.clone();
             if !matches!(state, State::Idle) && next.shortcuts != config.shortcuts {
                 settings.status(cx, "Finish the current recording first".into());
@@ -1098,6 +1120,8 @@ fn handle(
                 field.update(cx, |field, cx| field.set(value.clone(), cx));
             }
             settings.theme.set(config.theme);
+            settings.auto_paste.set(config.auto_paste);
+            settings.screenshot.set(config.screenshot);
             settings.root.update(cx, |root, cx| {
                 root.shortcuts = config.shortcuts.clone();
                 cx.notify();

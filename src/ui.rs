@@ -38,6 +38,8 @@ pub struct Root {
     pub shortcut_modifiers: gpui::Modifiers,
     pub status: SharedString,
     pub theme: Rc<Cell<Theme>>,
+    pub auto_paste: Rc<Cell<bool>>,
+    pub screenshot: Rc<Cell<bool>>,
     key: Entity<Field>,
     voice: Entity<Field>,
     answer: Entity<Field>,
@@ -72,6 +74,8 @@ impl Root {
         shortcuts: [Trigger; 3],
         shortcut_focus: FocusHandle,
         theme: Rc<Cell<Theme>>,
+        auto_paste: Rc<Cell<bool>>,
+        screenshot: Rc<Cell<bool>>,
         key: Entity<Field>,
         voice: Entity<Field>,
         answer: Entity<Field>,
@@ -87,6 +91,8 @@ impl Root {
             shortcut_modifiers: gpui::Modifiers::default(),
             status: "Ready".into(),
             theme,
+            auto_paste,
+            screenshot,
             key,
             voice,
             answer,
@@ -108,6 +114,10 @@ impl Root {
             Event::RefreshModels(ModelKind::Answer) => "answer-browse".to_owned(),
             Event::RefreshMics => "mic-browse".to_owned(),
             Event::CaptureStart(index) => format!("shortcut-{index}"),
+            Event::SetAutoPaste(true) => "autopaste-on".to_owned(),
+            Event::SetAutoPaste(false) => "autopaste-off".to_owned(),
+            Event::SetScreenshot(true) => "screenshot-on".to_owned(),
+            Event::SetScreenshot(false) => "screenshot-off".to_owned(),
             _ => label.to_owned(),
         };
         let model_picker = matches!(
@@ -201,6 +211,31 @@ impl Root {
                     false,
                 ))
             })
+    }
+
+    fn toggle_row(
+        label: &str,
+        on: Event,
+        off: Event,
+        enabled: bool,
+        tx: &Sender<Event>,
+        dark: bool,
+        muted: u32,
+    ) -> impl IntoElement {
+        div()
+            .flex()
+            .items_center()
+            .gap_2()
+            .child(
+                div()
+                    .w(px(116.))
+                    .flex_shrink_0()
+                    .text_sm()
+                    .text_color(rgb(muted))
+                    .child(label.to_owned()),
+            )
+            .child(Self::button(tx.clone(), on, "On", dark, enabled))
+            .child(Self::button(tx.clone(), off, "Off", dark, !enabled))
     }
 
     fn window_control(
@@ -535,7 +570,25 @@ impl Render for Root {
                             dark,
                             self.theme.get() == Theme::Dark,
                         )),
-                );
+                )
+                .child(Self::toggle_row(
+                    "Auto-paste",
+                    Event::SetAutoPaste(true),
+                    Event::SetAutoPaste(false),
+                    self.auto_paste.get(),
+                    &tx,
+                    dark,
+                    muted,
+                ))
+                .child(Self::toggle_row(
+                    "Screenshot",
+                    Event::SetScreenshot(true),
+                    Event::SetScreenshot(false),
+                    self.screenshot.get(),
+                    &tx,
+                    dark,
+                    muted,
+                ));
         let footer = div()
             .flex_shrink_0()
             .border_t_1()
